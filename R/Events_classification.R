@@ -100,3 +100,56 @@ identify_events = function(boolean, threshold = 1) {
   
   return(result)
 }
+
+
+#' Identify the date of the center of mass of the event and its total volume
+#'
+#' @param observations zoo time series with the observations
+#' @param events vector identifying the number of event for the 'observations' 
+#' time series
+#'
+#' @return
+#' @export
+#'
+#' @examples
+centroid_events = function(observations, events){
+  
+  # Getting the total number of identified events
+  no_events = max(events)
+  
+  # Iterating trough each event to calculate the center of mass of each event
+  #   and the respective date
+  cm_date = vol_tot = NA
+  for(i in 1:no_events){
+    
+    # Identifying the event
+    pos_event = which(events == i)
+    
+    # If there is a one-day event, the date of the center of mass will be that
+    #   specific day
+    if(length(pos_event) > 1){
+      
+      # Extracting the values for the specific event
+      values = observations[pos_event]
+      dates  =  zoo::index(observations)[pos_event]
+      
+      # Calculating center of mass of the event according to the rounded date
+      numeric_dates = as.numeric(dates - min(dates)) + 1
+      pos_cm        = round(sum(numeric_dates * values) / sum(values), 0)
+      cm_date[i]    = as.character(dates[pos_cm])
+      vol_tot[i]    = sum(values)
+      
+    } else {
+      cm_date[i] = as.character(zoo::index(observations)[pos_event])
+      vol_tot[i] = as.numeric(observations[pos_event])
+    }
+    
+  }
+  
+  # Building the results data frame with the No_event, total_volume, and cm date
+  res = data.frame(No_event = 1:no_events, Total_volume = vol_tot, CM_date = cm_date)
+  
+  return(res)
+  
+}
+
