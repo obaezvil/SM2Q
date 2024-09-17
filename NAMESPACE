@@ -1,5 +1,4 @@
 exportPattern("^[[:alpha:]]+")
 importFrom("stats", "na.omit", "qnorm", "sd", "quantile", "ts")
 importFrom("utils", "capture.output", "modifyList", "write.table")
-importFrom("terra", "rast", "time", "writeCDF")
 
