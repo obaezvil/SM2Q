@@ -1,0 +1,12 @@
+Package: SM2Q
+Title: Package to analyse the influence of soil moisture on streamflow
+Version: 0.2.0
+Author: Oscar M. Baez-Villanueva and Mauricio Zambrano-Bigiarini
+Maintainer: Oscar M. Baez-Villanueva <obaezvil@gmail.com>
+Description: Package to analyse the influence of soil moisture on streamflow
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+Language: en
+Imports: hydroTSM, zoo
+RoxygenNote: 7.3.1
