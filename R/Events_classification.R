@@ -120,6 +120,7 @@ centroid_events = function(observations, events){
   # Iterating trough each event to calculate the center of mass of each event
   #   and the respective date
   cm_date = vol_tot = start_event = end_event = NA
+  intensity = duration = NA
   for(i in 1:no_events){
     
     # Identifying the event
@@ -140,10 +141,14 @@ centroid_events = function(observations, events){
       end_event[i]   = as.character(dates[length(dates)])
       cm_date[i]     = as.character(dates[pos_cm])
       vol_tot[i]     = sum(values)
+      intensity[i]   = max(values)
+      duration[i]    = length(dates)
       
     } else {
       start_event[i] = end_event[i] = cm_date[i] = as.character(zoo::index(observations)[pos_event])
       vol_tot[i]     = as.numeric(observations[pos_event])
+      intensity[i]   = as.numeric(observations[pos_event])
+      duration[i]    = 1
     }
     
   }
@@ -151,6 +156,8 @@ centroid_events = function(observations, events){
   # Building the results data frame with the No_event, total_volume, and cm date
   res = data.frame(No_event     = 1:no_events, 
                    Total_volume = vol_tot, 
+                   Intensity    = intensity,
+                   Duration     = duration,
                    CM_date      = cm_date,
                    Start_event  = start_event,
                    End_event    = end_event)
