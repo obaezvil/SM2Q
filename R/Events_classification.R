@@ -166,3 +166,123 @@ centroid_events = function(observations, events){
   
 }
 
+
+#' Attribute Q events to defined P events 
+#'
+#' @param p_centroid_events data.frame resulting from the 'centroid_events' 
+#' function applied to P events
+#' @param q_centroid_events data.frame resulting from the 'centroid_events' 
+#' function applied to Q events
+#'
+#' @return This function retrieves a data.frame with the respective lag time,
+#' between P and Q events and the respective information of both events 
+#' (intensity, duration; and starting, ending, and CM times)
+#' @export
+#'
+#' @examples
+match_P2Q_events = function(p_centroid_events, q_centroid_events){
+  
+  # Identifying the number of P events
+  no_p_events = nrow(p_centroid_events)
+  
+  # Iterating trough number of P events
+  days_apart = detected_event = NA
+  for(i in 1:no_p_events){
+    
+    cm_p_event  =  as.Date(p_centroid_events$CM_date[i])
+    cm_q_events = as.Date(q_centroid_events$CM_date)
+    
+    # Find forward dates (dates greater or equal than cm_p_event)
+    forward_dates = cm_q_events[cm_q_events >= cm_p_event]
+    
+    if(length(forward_dates) == 0){
+      
+      days_apart[i]      = -999
+      detected_event[i]  = -999
+      
+    } else {
+      
+      # Find the closest forward date and computing the distance in days
+      closest_forward_date = min(forward_dates)
+      days_apart[i]        = as.numeric(closest_forward_date - cm_p_event)
+      detected_event[i]    = which(as.Date(q_centroid_events$CM_date) %in% closest_forward_date)
+      
+      # Checking distance from previous event (case that the p event contributes 
+      #   to an existing event)
+      if(i > 1){
+        previous_event       = detected_event[i] - 1
+        previous_cm          = q_centroid_events$CM_date[previous_event]
+        days_apart_prevEvent = as.numeric(as.Date(cm_p_event) - as.Date(previous_cm))
+        
+        # If previous event is closer to the P centroid than the forward event and
+        #   the CM of the P event lies within the previous Q event's start and 
+        #   ending dates, the P event is attributed to the previous event
+        if(days_apart_prevEvent < days_apart[i]){
+          
+          q_start_date = q_centroid_events$Start_event[previous_event]
+          q_end_date   = q_centroid_events$End_event[previous_event]
+          
+          # Check wether the p event lies within the start and end dates of the
+          #   previous event
+          is_within_range <- as.Date(cm_p_event) >= as.Date(q_start_date) & 
+            as.Date(cm_p_event) <= as.Date(q_end_date)
+          if(is_within_range){
+            
+            days_apart[i]        = days_apart_prevEvent
+            detected_event[i]    = previous_event
+            
+          }
+          
+        }
+      } # END if (for the first event) i different to 1
+      
+    } # END first if
+    
+  } # END for
+  
+  # Constructing the resulting object
+  res = data.frame(No_P_event      = 1:no_p_events,
+                   Related_Q_event = detected_event,
+                   Days_apart      = days_apart,
+                   P_volume        = p_centroid_events$Total_volume,
+                   P_intensity     = p_centroid_events$Intensity,
+                   P_duration      = p_centroid_events$Duration,
+                   P_start         = p_centroid_events$Start_event,
+                   P_end           = p_centroid_events$End_event,
+                   P_CM            = p_centroid_events$CM_date,
+                   Q_volume        = NA,
+                   Q_peak          = NA,
+                   Q_duration      = NA,
+                   Q_start         = NA,
+                   Q_end           = NA,
+                   Q_CM            = NA)
+  
+  # Iterative process to add Q event properties
+  for(i in 1:no_p_events){
+    
+    # find corresponding Q event
+    qevent_pos = which(q_centroid_events$No_event %in% res$Related_Q_event[i])
+    qevent     = q_centroid_events[qevent_pos,]
+    
+    if(nrow(qevent) != 0){
+      
+      res$Q_volume[i]        = qevent$Total_volume
+      res$Q_peak[i]          = qevent$Intensity
+      res$Q_duration[i]      = qevent$Duration
+      res$Q_start[i]         = qevent$Start_event
+      res$Q_end[i]           = qevent$End_event
+      res$Q_CM[i]            = qevent$CM_date
+      
+    } else {
+      
+      res$Q_volume[i] =  res$Q_peak[i] =  res$Q_duration[i] = -999
+      res$Q_start[i]  =   res$Q_end[i] = res$Q_CM[i]        = -999
+      
+    }
+    
+  } # END for
+  
+  return(res)
+  
+}
+
