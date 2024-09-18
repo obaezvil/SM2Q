@@ -286,3 +286,152 @@ match_P2Q_events = function(p_centroid_events, q_centroid_events){
   
 }
 
+#' Perform event attribution analysis for P and Q
+#'
+#' @param events_analysis data.frame resulting from the 'match_P2Q_events'
+#' function
+#' @param endP2Qstart_days numeric value that denotes the maximum lag between 
+#' the end of a P event and start of its respective Q event. P events with lags 
+#' longer to this value will not be considered.
+#'
+#' @return
+#' @export
+#'
+#' @examples
+clean_events_analysis = function(events_analysis, endP2Qstart_days = 1){
+  
+  ## Step 1: Define the interquartile range of the days apart from P to Q
+  
+  # Saving original data
+  orig_events_analysis = events_analysis
+  
+  # Excluding relation of extremely apart P to Q events. Threshold set at 30% 
+  #   values higher compared to the max P duration
+  max_duration      = round(max(events_analysis$P_duration, na.rm = TRUE), 0)
+  unrelated_Pevents = which(events_analysis$Days_apart >= (1.3 * max_duration))
+  
+  events_analysis$Related_Q_event[unrelated_Pevents] = 0
+  events_analysis$Q_volume[unrelated_Pevents]        = 0
+  events_analysis$Q_peak[unrelated_Pevents]          = 0
+  events_analysis$Q_duration[unrelated_Pevents]      = 0
+  events_analysis$Q_start[unrelated_Pevents]         = NA
+  events_analysis$Q_end[unrelated_Pevents]           = NA
+  events_analysis$Q_CM[unrelated_Pevents]            = NA
+  
+  # Excluding P events of -999 from the analysis
+  events_analysis = events_analysis[-which(events_analysis$Days_apart == -999),]
+  
+  # Which events really belong to the respective Q event?!?
+  # Those for which the end date of the P event concides at least with the begining of the Q event (even when the Pcm lies outside the Q event)
+  # Those for which the Pcm is inside the Q event
+  # 
+  
+  # Iterating Pevents to correlcly assign Q events
+  for(i in 1:nrow(events_analysis)){
+    
+    # Pass if Qevent == 0 (already unassigned P events)
+    if(events_analysis$Related_Q_event[i] != 0){
+      
+      # Defining start and end of P and Q events
+      centP  = as.Date(events_analysis$P_CM[i])
+      endP   = as.Date(events_analysis$P_end[i])
+      startQ = as.Date(events_analysis$Q_start[i])
+      endQ   = as.Date(events_analysis$Q_start[i])
+      
+      # Assessing whether centP lies within startQ and endQ (P inside Q event)
+      centroid_inside_event = centP >= startQ & centP <= endQ
+      
+      # Assessing wether endP is close enough to startQ (according to set threshold)
+      end_P2Q_start = as.numeric(startQ - endP) <= endP2Qstart_days
+      
+      # Evaluating the cases
+      selected_event = centroid_inside_event | end_P2Q_start
+      
+      if(!selected_event){
+        
+        events_analysis$Related_Q_event[i] = 0
+        events_analysis$Q_volume[i]        = 0
+        events_analysis$Q_peak[i]          = 0
+        events_analysis$Q_duration[i]      = 0
+        events_analysis$Q_start[i]         = NA
+        events_analysis$Q_end[i]           = NA
+        events_analysis$Q_CM[i]            = NA
+        
+      } # END if not assigned event
+      
+    } # END if Qevents == 0
+    
+  } # END for i
+  
+  # Formatting the results according to Q events
+  q_events = unique(events_analysis$Related_Q_event)
+  zero_pos = which(q_events == 0)
+  
+  if(length(zero_pos) == 1)
+    q_events = q_events[-zero_pos]
+  
+  # Iteration of each Q event
+  q_event = q_volume = q_peak = q_duration = q_start = q_end = q_cm =
+    p_volume = p_intensity = p_duration = NA
+  
+  for(i in seq_along(q_events)){
+    
+    event = q_events[i]
+    
+    # Subsetting P events related to specific Q event
+    Pevents   = events_analysis[which(events_analysis$Related_Q_event == event),]
+    noPevents = nrow(Pevents)
+    
+    # Filling Q related data
+    q_pos  = which(orig_events_analysis$Related_Q_event %in% event)[1]
+    q_data = orig_events_analysis[q_pos,]
+    
+    q_event[i]    = event
+    q_volume[i]   = q_data$Q_volume
+    q_peak[i]     = q_data$Q_peak
+    q_duration[i] = q_data$Q_duration
+    q_start[i]    = q_data$Q_start
+    q_end[i]      = q_data$Q_end
+    q_cm[i]       = q_data$Q_CM
+    
+    if(noPevents > 0){
+      
+      p_volume[i]    = sum(Pevents$P_volume)
+      p_intensity[i] = mean(Pevents$P_intensity)
+      p_duration[i]  = sum(Pevents$P_duration)
+      
+    } else {
+      
+      p_volume[i]    = 0
+      p_intensity[i] = 0
+      p_duration[i]  = 0
+      
+    } # END if no P events assigned
+    
+    
+  } # END for
+  
+  # Constructing the Q events data frame
+  
+  qres = data.frame(No_Q_event = q_event,
+                    Q_volume = q_volume,
+                    Q_peak = q_peak,
+                    Q_duration = q_duration,
+                    Q_start = q_start,
+                    Q_end = q_end,
+                    Q_CM = q_cm,
+                    P_volume = p_volume,
+                    P_intensity = p_intensity,
+                    P_duration = p_duration)
+  
+  # Calculating the runnof coefficient per Q event
+  qres$CR_ev = qres$Q_volume / qres$P_volume
+  
+  # Constructing the resulting list
+  res = list(P_events_analysis = events_analysis,
+             Q_events_analysis = qres)
+  
+  return(res)
+  
+}
+
