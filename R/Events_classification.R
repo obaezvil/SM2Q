@@ -372,7 +372,7 @@ clean_events_analysis = function(events_analysis, endP2Qstart_days = 1){
   
   # Iteration of each Q event
   q_event = q_volume = q_peak = q_duration = q_start = q_end = q_cm =
-    p_volume = p_intensity = p_duration = NA
+    p_volume = p_intensity = p_duration = p_start = NA
   
   for(i in seq_along(q_events)){
     
@@ -399,6 +399,7 @@ clean_events_analysis = function(events_analysis, endP2Qstart_days = 1){
       p_volume[i]    = sum(Pevents$P_volume)
       p_intensity[i] = mean(Pevents$P_intensity)
       p_duration[i]  = sum(Pevents$P_duration)
+      p_start[i]     = min(as.Date(Pevents$P_start))
       
     } else {
       
@@ -413,16 +414,17 @@ clean_events_analysis = function(events_analysis, endP2Qstart_days = 1){
   
   # Constructing the Q events data frame
   
-  qres = data.frame(No_Q_event = q_event,
-                    Q_volume = q_volume,
-                    Q_peak = q_peak,
-                    Q_duration = q_duration,
-                    Q_start = q_start,
-                    Q_end = q_end,
-                    Q_CM = q_cm,
-                    P_volume = p_volume,
+  qres = data.frame(No_Q_event  = q_event,
+                    Q_volume    = q_volume,
+                    Q_peak      = q_peak,
+                    Q_duration  = q_duration,
+                    Q_start     = q_start,
+                    Q_end       = q_end,
+                    Q_CM        = q_cm,
+                    P_volume    = p_volume,
                     P_intensity = p_intensity,
-                    P_duration = p_duration)
+                    P_duration  = p_duration,
+                    P_start     = p_start)
   
   # Calculating the runnof coefficient per Q event
   qres$CR_ev = qres$Q_volume / qres$P_volume
