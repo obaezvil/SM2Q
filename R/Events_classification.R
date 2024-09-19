@@ -399,7 +399,7 @@ clean_events_analysis = function(events_analysis, endP2Qstart_days = 1){
       p_volume[i]    = sum(Pevents$P_volume)
       p_intensity[i] = mean(Pevents$P_intensity)
       p_duration[i]  = sum(Pevents$P_duration)
-      p_start[i]     = min(as.Date(Pevents$P_start))
+      p_start[i]     = as.character(min(as.Date(Pevents$P_start)))
       
     } else {
       
@@ -437,3 +437,66 @@ clean_events_analysis = function(events_analysis, endP2Qstart_days = 1){
   
 }
 
+
+#' Including SM antecedent for the selected events
+#'
+#' @param clean_analysis data.frame obtained trough the 'clean_events_analysis' 
+#' function
+#' @param sm_obs zoo time series of the soil moisture observations
+#' @param lag the days prior to the first day of precipitation of each event. 
+#' The soil moisture will be obtained from the respective day (P_start - lag)
+#'
+#' @return data.frame that includes the antecedent soil moisture for each Q and 
+#' P event
+#' @export
+#'
+#' @examples
+attribute_sm = function(clean_analysis, sm_obs, lag = 1){
+  
+  # Extracting the Q and P related outputs from the 'clean_analysis' data.frame
+  q_events = clean_analysis$Q_events_analysis
+  p_events = clean_analysis$P_events_analysis
+  
+  # Iterating per event to extract the antecedent SM according to the lag(days)
+  #   for a specific Q event
+  SM_prior = NA
+  for(i in 1:nrow(q_events)){
+    
+    # Extracting the specific event and the P_start time
+    event   = q_events[i,]
+    p_start = as.Date(event$P_start)
+    
+    # Subtracting the SM lag
+    sm_start = p_start - lag
+    
+    # Finding the correspondent SM value
+    SM_prior[i] = as.numeric(sm_obs[which(zoo::index(sm_obs) == sm_start)])
+    
+  } # END for q events
+  
+  # Constructing the resulting data.frame for Q events
+  clean_analysis$Q_events_analysis$SM_prior = SM_prior
+  
+  # Iterating per event to extract the antecedent SM according to the lag(days)
+  #   for a specific P event
+  SM_P_prior = NA
+  for(i in 1:nrow(p_events)){
+    
+    # Extracting the specific event and the P_start time
+    event   = p_events[i,]
+    p_start = as.Date(event$P_start)
+    
+    # Subtracting the SM lag
+    sm_start = p_start - lag
+    
+    # Finding the correspondent SM value
+    SM_P_prior[i] = as.numeric(sm_obs[which(zoo::index(sm_obs) == sm_start)])
+    
+  }
+  
+  # Constructing the resulting data.frame for Q events
+  clean_analysis$P_events_analysis$SM_prior = SM_P_prior
+  
+  return(clean_analysis)
+  
+}
