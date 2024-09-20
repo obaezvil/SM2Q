@@ -28,13 +28,15 @@ sepparate_streamflow = function(q_obs, p_obs, par_beta = 0.925){
   baseflow = hydroTSM::baseflow(q_obs, na.fill = 'linear', beta = par_beta)
   
   # Calculating direct runnof
-  q_direct     = q_obs - baseflow
-  q_direct_bol = round(q_direct, 0)
+  q_direct     = q_obs - baseflow - 0.5 # Assure the separation of events ### FIXXXX
+  q_direct[q_direct < 0] = 0
+  q_direct_bol = q_direct 
+  
   
   # Calculating boolean event identification for streamflow
   q_boolean = q_direct_bol
-  q_boolean[q_boolean <  1] = 0
-  q_boolean[q_boolean >= 1] = 1
+  q_boolean[q_boolean <=  0] = 0
+  q_boolean[q_boolean >   0] = 1
   
   
   # Calculating boolean event identification for precipitation (thers. 1 mm)
